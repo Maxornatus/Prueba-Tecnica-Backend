@@ -16,6 +16,7 @@ public partial class ClientesPruebaTecnicaContext : DbContext
     public ClientesPruebaTecnicaContext(DbContextOptions<ClientesPruebaTecnicaContext> options)
         : base(options)
     {
+
     }
 
     public virtual DbSet<Cliente> Clientes { get; set; }
@@ -103,5 +104,23 @@ public partial class ClientesPruebaTecnicaContext : DbContext
                                        };
 
         return clientesConTipoDocumento;
+    }
+
+    public async Task<Dictionary<string, int>> GetDocumentCountsForTiposDocumentoAsync()
+    {
+        var tiposDocumento = await TiposDocumento.ToListAsync();
+
+        var counts = new Dictionary<string, int>();
+
+        foreach (var tipoDocumento in tiposDocumento)
+        {
+            var count = await Clientes
+                .Where(cliente => cliente.TipoDocumentoId == tipoDocumento.TipoDocumentoId)
+                .CountAsync();
+
+            counts.Add(tipoDocumento.TipoDocumentoNombre, count);
+        }
+
+        return counts;
     }
 }

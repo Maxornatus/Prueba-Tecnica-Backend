@@ -17,20 +17,16 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+//Clientes
+
 app.MapGet("/Clientes", async (ClientesPruebaTecnicaContext ClienteDb) =>
     await ClienteDb.Clientes.ToListAsync());
 
-app.MapGet("/ClientesDocumentos", async (ClientesPruebaTecnicaContext ClienteDb) =>
-    await ClienteDb.GetClientesConTipoDocumento(ClienteDb).ToListAsync());
-
-app.MapGet("/TiposDocumento", async (ClientesPruebaTecnicaContext ClienteDb) =>
-    await ClienteDb.TiposDocumento.ToListAsync());
-
 app.MapGet("/Clientes/{id}", async (int id, ClientesPruebaTecnicaContext ClienteDb) =>
-    await ClienteDb.Clientes.FindAsync(id)
-        is Cliente cliente
-            ? Results.Ok(cliente)
-            : Results.NotFound());
+   await ClienteDb.Clientes.FindAsync(id)
+       is Cliente cliente
+           ? Results.Ok(cliente)
+           : Results.NotFound());
 
 app.MapPost("/Clientes", async (Cliente cliente, ClientesPruebaTecnicaContext ClienteDb) =>
 {
@@ -60,11 +56,9 @@ app.MapPut("/Clientes/{id}", async (int id, Cliente inputCliente, ClientesPrueba
     return Results.NoContent();
 });
 
-
-
 app.MapDelete("/Clientes/{id}", async (int id, ClientesPruebaTecnicaContext ClienteDb) =>
 {
-    if(await ClienteDb.Clientes.FindAsync(id) is Cliente cliente)
+    if (await ClienteDb.Clientes.FindAsync(id) is Cliente cliente)
     {
         ClienteDb.Clientes.Remove(cliente);
         await ClienteDb.SaveChangesAsync();
@@ -73,6 +67,72 @@ app.MapDelete("/Clientes/{id}", async (int id, ClientesPruebaTecnicaContext Clie
 
     return Results.NotFound();
 });
+
+//TipoDocumento 
+
+app.MapGet("/TiposDocumento", async (ClientesPruebaTecnicaContext ClienteDb) =>
+    await ClienteDb.TiposDocumento.ToListAsync());
+
+app.MapGet("/TiposDocumentoContador", async (ClientesPruebaTecnicaContext ClienteDb) =>
+{
+    var tiposDocumento = await ClienteDb.TiposDocumento.ToListAsync();
+
+    var documentCounts = await ClienteDb.GetDocumentCountsForTiposDocumentoAsync();
+
+    var response = tiposDocumento.Select(td => new
+    {
+        TipoDocumento = td,
+        DocumentCount = documentCounts.ContainsKey(td.TipoDocumentoNombre) ? documentCounts[td.TipoDocumentoNombre] : 0
+    });
+
+    return Results.Ok(response);
+});
+
+app.MapGet("/TiposDocumento/{id}", async (int id, ClientesPruebaTecnicaContext ClienteDb) =>
+   await ClienteDb.TiposDocumento.FindAsync(id)
+       is TiposDocumento documento
+           ? Results.Ok(documento)
+           : Results.NotFound());
+
+app.MapPost("/TiposDocumento", async (TiposDocumento documento, ClientesPruebaTecnicaContext ClienteDb) =>
+{
+    ClienteDb.TiposDocumento.Add(documento);
+    await ClienteDb.SaveChangesAsync();
+    return Results.Created($"/Clientes/{documento.TipoDocumentoId}", documento);
+});
+
+app.MapDelete("/TiposDocumento/{id}", async (int id, ClientesPruebaTecnicaContext ClienteDb) =>
+{
+    if (await ClienteDb.TiposDocumento.FindAsync(id) is TiposDocumento documento)
+    {
+        ClienteDb.TiposDocumento.Remove(documento);
+        await ClienteDb.SaveChangesAsync();
+        return Results.Ok(documento);
+    }
+
+    return Results.NotFound();
+});
+
+app.MapPut("/TiposDocumento/{id}", async (int id, TiposDocumento inputDocumento, ClientesPruebaTecnicaContext ClienteDb) =>
+{
+    var documento = await ClienteDb.TiposDocumento.FindAsync(id);
+
+    if (documento == null) return Results.NotFound();
+
+    documento.TipoDocumentoNombre = inputDocumento.TipoDocumentoNombre;
+
+    await ClienteDb.SaveChangesAsync();
+    return Results.NoContent();
+});
+
+//Cliente con TipoDocumento 
+
+app.MapGet("/ClientesDocumentos", async (ClientesPruebaTecnicaContext ClienteDb) =>
+    await ClienteDb.GetClientesConTipoDocumento(ClienteDb).ToListAsync());
+
+
+
+
 
 app.UseCors("NuevaPolitica");
 
